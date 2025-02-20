@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 class Square extends StatelessWidget {
   /// Indica si la casilla es blanca (true) o negra (false).
   final bool isWhite;
-  
+
   /// Pieza que se encuentra en la casilla (null si está vacía).
   final ChessPiece? piece;
-  
+
   /// Indica si la casilla está seleccionada actualmente.
   final bool isSelected;
-  
+
   /// Indica si la casilla es un movimiento válido para la pieza seleccionada.
   final bool isValidMove;
-  
+
   /// Función que se ejecuta al tocar la casilla.
   final void Function()? onTap;
 
@@ -37,11 +37,11 @@ class Square extends StatelessWidget {
     // Si la casilla está seleccionada, se resalta en verde.
     if (isSelected) {
       squareColor = Colors.green;
-    } 
+    }
     // Si la casilla es un movimiento válido, se resalta con un verde más claro.
     else if (isValidMove) {
       squareColor = Colors.green[300];
-    } 
+    }
     // Si no se cumple ninguna de las condiciones anteriores,
     // se asigna un color base según si la casilla es blanca o negra.
     else {

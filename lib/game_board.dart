@@ -17,28 +17,28 @@ class _GameBoardState extends State<GameBoard> {
   // Matriz de 8x8 que representa el tablero. Cada casilla puede tener una pieza o estar vacía (null)
   late List<List<ChessPiece?>> board;
 
-  // Pieza actualmente seleccionada
+  // Pieza actualmente seleccionada por el usuario
   ChessPiece? selectedPiece;
 
-  // Coordenadas de la pieza seleccionada
+  // Coordenadas (fila y columna) de la pieza seleccionada. Inicialmente -1 (ninguna seleccionada)
   int selectedRow = -1;
   int selectedCol = -1;
 
-  // Lista de movimientos válidos para la pieza seleccionada
+  // Lista de movimientos válidos para la pieza seleccionada; cada movimiento es una lista [fila, columna]
   List<List<int>> validMoves = [];
 
-  // Listas para almacenar las piezas capturadas de cada bando
+  // Listas para almacenar las piezas capturadas de cada bando (blancas y negras)
   List<ChessPiece> whitePiecesTaken = [];
   List<ChessPiece> blackPiecesTaken = [];
 
   // Variable para saber de quién es el turno: true para blancas, false para negras
   bool isWhiteTurn = true;
 
-  // Posiciones actuales de los reyes, importantes para verificar jaque y jaque mate
+  // Posiciones actuales de los reyes, importantes para verificar situaciones de jaque y jaque mate
   List<int> whiteKingPosition = [7, 4];
   List<int> blackKingPosition = [0, 4];
 
-  // Indica si hay jaque en el tablero
+  // Indica si hay jaque en el tablero (para mostrar notificación)
   bool checkStatus = false;
 
   @override
@@ -56,7 +56,7 @@ class _GameBoardState extends State<GameBoard> {
       (index) => List.generate(8, (index) => null),
     );
 
-    // Colocar peones para ambos bandos
+    // Colocar peones para ambos bandos en sus respectivas filas
     for (int i = 0; i < 8; i++) {
       // Peones negros en la fila 1
       newBoard[1][i] = ChessPiece(
@@ -73,7 +73,7 @@ class _GameBoardState extends State<GameBoard> {
       );
     }
 
-    // Colocar torres
+    // Colocar torres en las esquinas correspondientes
     newBoard[0][0] = ChessPiece(
       type: ChessPieceType.rook,
       isWhite: false,
@@ -95,7 +95,7 @@ class _GameBoardState extends State<GameBoard> {
       imagePath: 'lib/images/rook.png',
     );
 
-    // Colocar caballos
+    // Colocar caballos en las posiciones iniciales
     newBoard[0][1] = ChessPiece(
       type: ChessPieceType.knight,
       isWhite: false,
@@ -117,7 +117,7 @@ class _GameBoardState extends State<GameBoard> {
       imagePath: 'lib/images/knight.png',
     );
 
-    // Colocar alfiles
+    // Colocar alfiles en las posiciones correspondientes
     newBoard[0][2] = ChessPiece(
       type: ChessPieceType.bishop,
       isWhite: false,
@@ -151,7 +151,7 @@ class _GameBoardState extends State<GameBoard> {
       imagePath: 'lib/images/queen.png',
     );
 
-    // Colocar reyes
+    // Colocar reyes y definir su posición inicial
     newBoard[0][4] = ChessPiece(
       type: ChessPieceType.king,
       isWhite: false,
@@ -163,36 +163,37 @@ class _GameBoardState extends State<GameBoard> {
       imagePath: 'lib/images/king.png',
     );
 
-    // Asignar el tablero inicializado a la variable global
+    // Asignar el tablero inicializado a la variable global board
     board = newBoard;
   }
 
-  // Función que se llama al tocar una casilla del tablero
+  // Función que se llama al tocar una casilla del tablero.
+  // Se encarga de manejar la selección de piezas, cambio de selección y movimiento si la casilla es válida.
   void pieceSelected(int row, int col) {
     setState(() {
-      // Si no hay pieza seleccionada y la casilla tocada contiene una pieza
+      // Si no hay pieza seleccionada y la casilla tocada contiene una pieza...
       if (selectedPiece == null && board[row][col] != null) {
-        // Solo se permite seleccionar una pieza del bando cuyo turno es
+        // Solo se permite seleccionar una pieza del bando cuyo turno es el actual
         if (board[row][col]!.isWhite == isWhiteTurn) {
           selectedPiece = board[row][col];
           selectedRow = row;
           selectedCol = col;
         }
       }
-      // Si se toca otra pieza del mismo bando, se cambia la selección
+      // Si se toca otra pieza del mismo bando, se actualiza la selección
       else if (board[row][col] != null &&
           board[row][col]!.isWhite == selectedPiece!.isWhite) {
         selectedPiece = board[row][col];
         selectedRow = row;
         selectedCol = col;
       }
-      // Si la casilla tocada es un movimiento válido para la pieza seleccionada
+      // Si se toca una casilla que es un movimiento válido para la pieza seleccionada, se realiza el movimiento
       else if (selectedPiece != null &&
           validMoves.any((element) => element[0] == row && element[1] == col)) {
         movePiece(row, col);
       }
 
-      // Actualizar la lista de movimientos válidos para la pieza seleccionada
+      // Actualiza la lista de movimientos válidos para la pieza seleccionada
       validMoves = calculateRealValidMoves(
         selectedRow,
         selectedCol,
@@ -202,28 +203,28 @@ class _GameBoardState extends State<GameBoard> {
     });
   }
 
-  // Calcula movimientos "crudos" (sin verificar jaque) para la pieza en (row, col)
+  // Calcula los movimientos "crudos" (sin validar el jaque) para la pieza ubicada en (row, col)
   List<List<int>> calculateRawValidMoves(int row, int col, ChessPiece? piece) {
     List<List<int>> candidateMoves = [];
 
-    // Si no hay pieza, no hay movimientos posibles
+    // Si no hay pieza en la casilla, no hay movimientos posibles
     if (piece == null) {
       return [];
     }
 
-    // Dirección para el avance del peón: -1 para blancas (arriba) y 1 para negras (abajo)
+    // Determina la dirección de avance para el peón: -1 para blancas (hacia arriba) y 1 para negras (hacia abajo)
     int direction = piece.isWhite ? -1 : 1;
 
-    // Verificar el tipo de pieza para calcular sus movimientos
+    // Se calcula según el tipo de pieza
     switch (piece.type) {
       case ChessPieceType.pawn:
-        // Movimiento hacia adelante de un paso si la casilla está vacía
+        // Movimiento hacia adelante de un paso, si la casilla está vacía
         if (isInBoard(row + direction, col) &&
             board[row + direction][col] == null) {
           candidateMoves.add([row + direction, col]);
         }
 
-        // Movimiento de dos pasos si es el primer movimiento del peón
+        // Movimiento de dos pasos si es el primer movimiento del peón y ambas casillas están vacías
         if ((row == 1 && !piece.isWhite) || (row == 6 && piece.isWhite)) {
           if (isInBoard(row + 2 * direction, col) &&
               board[row + 2 * direction][col] == null &&
@@ -248,7 +249,7 @@ class _GameBoardState extends State<GameBoard> {
         break;
 
       case ChessPieceType.rook:
-        // Direcciones posibles para la torre: vertical y horizontal
+        // Movimientos en línea recta: vertical y horizontal
         var directions = [
           [-1, 0], // arriba
           [1, 0], // abajo
@@ -256,27 +257,27 @@ class _GameBoardState extends State<GameBoard> {
           [0, 1], // derecha
         ];
 
-        // Recorrer cada dirección
+        // Para cada dirección, se recorre hasta encontrar el borde del tablero o una pieza
         for (var direction in directions) {
           var i = 1;
           while (true) {
             var newRow = row + i * direction[0];
             var newCol = col + i * direction[1];
 
-            // Verificar que la nueva posición esté dentro del tablero
+            // Verifica que la nueva posición esté dentro del tablero
             if (!isInBoard(newRow, newCol)) {
               break;
             }
 
-            // Si la casilla contiene una pieza
+            // Si la casilla contiene una pieza...
             if (board[newRow][newCol] != null) {
-              // Si la pieza es enemiga, se puede capturar
+              // Si la pieza es enemiga, se añade el movimiento de captura
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]); // captura
+                candidateMoves.add([newRow, newCol]);
               }
-              break; // la pieza bloquea el camino
+              break; // Se detiene al encontrar cualquier pieza
             }
-            // Agregar el movimiento como válido
+            // Si está vacía, se añade como movimiento válido
             candidateMoves.add([newRow, newCol]);
             i++;
           }
@@ -284,41 +285,42 @@ class _GameBoardState extends State<GameBoard> {
         break;
 
       case ChessPieceType.knight:
-        // Movimientos característicos del caballo (en L)
+        // Movimientos característicos del caballo (en "L")
         var knightMoves = [
-          [-2, -1], // dos arriba, uno izquierda
-          [-2, 1], // dos arriba, uno derecha
-          [-1, -2], // uno arriba, dos izquierda
-          [-1, 2], // uno arriba, dos derecha
-          [1, -2], // uno abajo, dos izquierda
-          [1, 2], // uno abajo, dos derecha
-          [2, -1], // dos abajo, uno izquierda
-          [2, 1], // dos abajo, uno derecha
+          [-2, -1],
+          [-2, 1],
+          [-1, -2],
+          [-1, 2],
+          [1, -2],
+          [1, 2],
+          [2, -1],
+          [2, 1],
         ];
 
-        // Recorrer cada posible movimiento
+        // Se recorre cada uno de los posibles movimientos
         for (var move in knightMoves) {
           var newRow = row + move[0];
           var newCol = col + move[1];
 
+          // Verificar que la nueva posición esté en el tablero
           if (!isInBoard(newRow, newCol)) {
             continue;
           }
 
-          // Si hay pieza en la casilla destino
+          // Si hay pieza en la casilla destino...
           if (board[newRow][newCol] != null) {
-            // Solo se puede capturar si es enemiga
+            // Solo se permite capturar si es una pieza enemiga
             if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-              candidateMoves.add([newRow, newCol]); // captura
+              candidateMoves.add([newRow, newCol]);
             }
-            continue; // casilla bloqueada para movimiento sin captura
+            continue;
           }
           candidateMoves.add([newRow, newCol]);
         }
         break;
 
       case ChessPieceType.bishop:
-        // Direcciones diagonales
+        // Movimientos diagonales
         var directions = [
           [-1, -1], // arriba izquierda
           [-1, 1], // arriba derecha
@@ -326,7 +328,7 @@ class _GameBoardState extends State<GameBoard> {
           [1, 1], // abajo derecha
         ];
 
-        // Recorrer cada dirección diagonal
+        // Se recorre cada dirección diagonal
         for (var direction in directions) {
           var i = 1;
           while (true) {
@@ -337,13 +339,13 @@ class _GameBoardState extends State<GameBoard> {
               break;
             }
 
-            // Si hay una pieza en la casilla destino
+            // Si hay una pieza en la casilla destino...
             if (board[newRow][newCol] != null) {
-              // Si es enemiga se puede capturar
+              // Se añade el movimiento si la pieza es enemiga (captura)
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]); // captura
+                candidateMoves.add([newRow, newCol]);
               }
-              break; // camino bloqueado
+              break; // Se bloquea la dirección
             }
             candidateMoves.add([newRow, newCol]);
             i++;
@@ -364,7 +366,7 @@ class _GameBoardState extends State<GameBoard> {
           [1, 1], // abajo derecha
         ];
 
-        // Recorrer cada dirección
+        // Se recorre cada dirección y se acumulan movimientos hasta bloquearse
         for (var direction in directions) {
           var i = 1;
           while (true) {
@@ -374,13 +376,13 @@ class _GameBoardState extends State<GameBoard> {
               break;
             }
 
-            // Si se encuentra una pieza
+            // Si se encuentra una pieza...
             if (board[newRow][newCol] != null) {
-              // Capturar si es enemiga
+              // Se añade si es enemiga, permitiendo la captura
               if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-                candidateMoves.add([newRow, newCol]); // captura
+                candidateMoves.add([newRow, newCol]);
               }
-              break; // camino bloqueado
+              break; // Camino bloqueado
             }
             candidateMoves.add([newRow, newCol]);
             i++;
@@ -389,7 +391,7 @@ class _GameBoardState extends State<GameBoard> {
         break;
 
       case ChessPieceType.king:
-        // Movimientos posibles del rey (una casilla en cualquier dirección)
+        // Movimientos posibles del rey: una casilla en cualquier dirección
         var directions = [
           [-1, 0], // arriba
           [1, 0], // abajo
@@ -401,7 +403,7 @@ class _GameBoardState extends State<GameBoard> {
           [1, 1], // abajo derecha
         ];
 
-        // Recorrer cada dirección
+        // Se evalúa cada casilla adyacente
         for (var direction in directions) {
           var newRow = row + direction[0];
           var newCol = col + direction[1];
@@ -409,22 +411,24 @@ class _GameBoardState extends State<GameBoard> {
             continue;
           }
 
-          // Si la casilla destino contiene una pieza
+          // Si la casilla destino contiene una pieza...
           if (board[newRow][newCol] != null) {
-            // Solo se puede capturar si es enemiga
+            // Solo se permite capturar si es enemiga
             if (board[newRow][newCol]!.isWhite != piece.isWhite) {
-              candidateMoves.add([newRow, newCol]); // captura
+              candidateMoves.add([newRow, newCol]);
             }
-            continue; // casilla bloqueada
+            continue;
           }
           candidateMoves.add([newRow, newCol]);
         }
         break;
     }
+    // Devuelve la lista de movimientos "crudos" calculados
     return candidateMoves;
   }
 
-  // Calcula los movimientos reales válidos, considerando simulaciones para evitar exponer al rey a jaque
+  // Calcula los movimientos reales válidos para una pieza en (row, col)
+  // considerando simulaciones para evitar movimientos que dejen al rey en jaque.
   List<List<int>> calculateRealValidMoves(
     int row,
     int col,
@@ -432,31 +436,31 @@ class _GameBoardState extends State<GameBoard> {
     bool checkSimulation,
   ) {
     List<List<int>> realValidMoves = [];
-    // Primero se obtienen los movimientos "crudos"
+    // Primero, se obtienen los movimientos "crudos" sin validar el jaque
     List<List<int>> candidateMoves = calculateRawValidMoves(row, col, piece);
 
-    // Si se debe verificar la seguridad del movimiento (simulación)
+    // Si se requiere validar mediante simulación:
     if (checkSimulation) {
       for (var move in candidateMoves) {
         int endRow = move[0];
         int endCol = move[1];
 
-        // Se simula el movimiento para verificar que no ponga en jaque al rey
+        // Simula el movimiento y verifica que no ponga al rey en jaque
         if (simulatedMoveIsSafe(piece!, row, col, endRow, endCol)) {
           realValidMoves.add(move);
         }
       }
     } else {
-      // Si no se verifica la simulación, se retornan los movimientos candidatos
+      // Si no se requiere la simulación, se devuelven los movimientos candidatos
       realValidMoves = candidateMoves;
     }
 
     return realValidMoves;
   }
 
-  // Realiza el movimiento de la pieza seleccionada hacia (newRow, newCol)
+  // Método que realiza el movimiento de la pieza seleccionada hacia la casilla (newRow, newCol)
   void movePiece(int newRow, int newCol) {
-    // Si en la casilla destino hay una pieza, se captura
+    // Si en la casilla destino hay una pieza, se captura y se agrega a la lista correspondiente
     if (board[newRow][newCol] != null) {
       var capturedPiece = board[newRow][newCol];
       if (capturedPiece!.isWhite) {
@@ -475,7 +479,7 @@ class _GameBoardState extends State<GameBoard> {
       }
     }
 
-    // Mueve la pieza: asigna la pieza seleccionada a la casilla destino y la elimina de la casilla original
+    // Mueve la pieza: coloca la pieza seleccionada en la casilla destino y vacía la casilla original
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
 
@@ -486,6 +490,16 @@ class _GameBoardState extends State<GameBoard> {
       checkStatus = false;
     }
 
+    // Antes de reiniciar la selección, se verifica si la pieza movida es un peón que ha llegado a la última fila
+    if (selectedPiece!.type == ChessPieceType.pawn) {
+      // Para piezas blancas, la promoción ocurre en la fila 0; para negras, en la fila 7
+      if ((selectedPiece!.isWhite && newRow == 0) ||
+          (!selectedPiece!.isWhite && newRow == 7)) {
+        // Llama al diálogo de promoción para que el usuario seleccione la pieza
+        _showPromotionDialog(newRow, newCol, selectedPiece!.isWhite);
+      }
+    }
+
     // Reinicia la selección y los movimientos válidos
     setState(() {
       selectedPiece = null;
@@ -494,7 +508,7 @@ class _GameBoardState extends State<GameBoard> {
       validMoves = [];
     });
 
-    // Verificar si se ha producido un jaque mate
+    // Verifica si se ha producido un jaque mate en el bando contrario
     if (isCheckMate(!isWhiteTurn)) {
       showDialog(
         context: context,
@@ -512,25 +526,96 @@ class _GameBoardState extends State<GameBoard> {
       );
     }
 
-    // Cambiar turno al otro jugador
+    // Cambia el turno al otro jugador
     isWhiteTurn = !isWhiteTurn;
   }
 
-  // Verifica si el rey del bando especificado está en jaque
+  // Función que muestra un diálogo para la promoción del peón.
+  // Permite elegir entre Reina, Torre, Alfil y Caballo.
+  void _showPromotionDialog(int row, int col, bool isWhite) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Promoción de Peón"),
+          content: const Text(
+            "Selecciona la pieza a la que deseas promover el peón:",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  board[row][col] = ChessPiece(
+                    type: ChessPieceType.queen,
+                    isWhite: isWhite,
+                    imagePath: 'lib/images/queen.png',
+                  );
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text("Reina"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  board[row][col] = ChessPiece(
+                    type: ChessPieceType.rook,
+                    isWhite: isWhite,
+                    imagePath: 'lib/images/rook.png',
+                  );
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text("Torre"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  board[row][col] = ChessPiece(
+                    type: ChessPieceType.bishop,
+                    isWhite: isWhite,
+                    imagePath: 'lib/images/bishop.png',
+                  );
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text("Alfil"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  board[row][col] = ChessPiece(
+                    type: ChessPieceType.knight,
+                    isWhite: isWhite,
+                    imagePath: 'lib/images/knight.png',
+                  );
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text("Caballo"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Verifica si el rey del bando especificado está en jaque.
+  // Se recorre todo el tablero para ver si alguna pieza enemiga puede atacar la posición del rey.
   bool isKingInCheck(bool isWhiteKing) {
-    // Seleccionar la posición del rey según el bando
+    // Se selecciona la posición del rey según el bando
     List<int> kingPosition =
         isWhiteKing ? whiteKingPosition : blackKingPosition;
 
     // Recorrer todas las casillas del tablero
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
-        // Saltar casillas vacías o piezas del mismo bando
+        // Se ignoran las casillas vacías o las piezas del mismo bando que el rey
         if (board[i][j] == null || board[i][j]!.isWhite == isWhiteKing) {
           continue;
         }
 
-        // Calcular movimientos válidos sin simular (para agilizar la comprobación)
+        // Se obtienen los movimientos válidos sin simular, para agilizar la comprobación
         List<List<int>> pieceValidMoves = calculateRealValidMoves(
           i,
           j,
@@ -538,7 +623,7 @@ class _GameBoardState extends State<GameBoard> {
           false,
         );
 
-        // Si alguno de los movimientos puede alcanzar la posición del rey, está en jaque
+        // Si algún movimiento puede alcanzar la posición del rey, este se encuentra en jaque
         if (pieceValidMoves.any(
           (move) => move[0] == kingPosition[0] && move[1] == kingPosition[1],
         )) {
@@ -550,6 +635,8 @@ class _GameBoardState extends State<GameBoard> {
     return false;
   }
 
+  // Simula un movimiento y verifica si es seguro, es decir, si no deja al rey en jaque.
+  // Para ello, se realiza el movimiento, se comprueba la seguridad y se revierte el cambio.
   bool simulatedMoveIsSafe(
     ChessPiece piece,
     int startRow,
@@ -557,15 +644,15 @@ class _GameBoardState extends State<GameBoard> {
     int endRow,
     int endCol,
   ) {
-    // Guardar la pieza original en la casilla destino (si la hay)
+    // Guarda la pieza original en la casilla destino (si la hay) para poder restaurarla
     ChessPiece? originalDestinationPiece = board[endRow][endCol];
 
-    // Variable para guardar la posición original del rey, en caso de que la pieza sea el rey
+    // Guarda la posición original del rey en caso de que la pieza movida sea el rey
     List<int>? originalKingPosition;
     if (piece.type == ChessPieceType.king) {
       originalKingPosition =
           piece.isWhite ? whiteKingPosition : blackKingPosition;
-      // Actualizar la posición del rey solo si la pieza movida es el rey
+      // Actualiza la posición del rey en la simulación
       if (piece.isWhite) {
         whiteKingPosition = [endRow, endCol];
       } else {
@@ -573,18 +660,18 @@ class _GameBoardState extends State<GameBoard> {
       }
     }
 
-    // Realizar el movimiento simulado
+    // Realiza el movimiento simulado en el tablero
     board[endRow][endCol] = piece;
     board[startRow][startCol] = null;
 
-    // Verificar si el rey queda en jaque tras el movimiento
+    // Verifica si tras el movimiento el rey queda en jaque
     bool kingInCheck = isKingInCheck(piece.isWhite);
 
-    // Revertir la simulación: restaurar el tablero a su estado original
+    // Revierte el movimiento para restaurar el estado original del tablero
     board[startRow][startCol] = piece;
     board[endRow][endCol] = originalDestinationPiece;
 
-    // Restaurar la posición del rey si la pieza movida es el rey
+    // Restaura la posición original del rey si la pieza simulada era el rey
     if (piece.type == ChessPieceType.king) {
       if (piece.isWhite) {
         whiteKingPosition = originalKingPosition!;
@@ -597,22 +684,24 @@ class _GameBoardState extends State<GameBoard> {
     return !kingInCheck;
   }
 
-  // Verifica si se ha producido un jaque mate para el bando indicado
+  // Verifica si se ha producido un jaque mate para el bando especificado.
+  // Se comprueba que el rey está en jaque y que ninguna pieza puede realizar un movimiento
+  // que saque al rey del jaque.
   bool isCheckMate(bool isWhiteKing) {
-    // Si el rey no está en jaque, no puede ser jaque mate
+    // Si el rey no está en jaque, no puede haber jaque mate
     if (!isKingInCheck(isWhiteKing)) {
       return false;
     }
 
-    // Recorrer todas las piezas del bando que está en jaque
+    // Recorre todas las piezas del bando que está en jaque
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
-        // Saltar casillas vacías o piezas del bando contrario
+        // Se ignoran casillas vacías o piezas del bando contrario
         if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
           continue;
         }
 
-        // Obtener los movimientos válidos para cada pieza, verificando la simulación
+        // Obtiene los movimientos válidos para cada pieza, verificando con simulación
         List<List<int>> pieceValidMoves = calculateRealValidMoves(
           i,
           j,
@@ -620,108 +709,150 @@ class _GameBoardState extends State<GameBoard> {
           true,
         );
 
-        // Si alguna pieza tiene al menos un movimiento que la saque del jaque, no es jaque mate
+        // Si alguna pieza tiene al menos un movimiento válido que la saque del jaque, no es jaque mate
         if (pieceValidMoves.isNotEmpty) {
           return false;
         }
       }
     }
 
-    // Si ninguna pieza puede evitar el jaque, es jaque mate
+    // Si ninguna pieza puede evitar el jaque, se declara jaque mate
     return true;
   }
 
-  // Función para reiniciar el juego a su estado inicial
+  // Función para reiniciar el juego a su estado inicial.
+  // Se cierra el diálogo de jaque mate, se reinicializa el tablero, se limpian las piezas capturadas
+  // y se restablecen las posiciones iniciales y el turno.
   void resetGame() {
-    // Cerrar el diálogo de jaque mate
+    // Cierra el diálogo emergente
     Navigator.pop(context);
-    // Reinicializar el tablero
+    // Reinicializa el tablero con las posiciones iniciales
     _initializeBoard();
     checkStatus = false;
-    // Limpiar las piezas capturadas
+    // Limpia las listas de piezas capturadas
     whitePiecesTaken.clear();
     blackPiecesTaken.clear();
-    // Restaurar las posiciones iniciales de los reyes
+    // Restaura las posiciones iniciales de los reyes
     whiteKingPosition = [7, 4];
     blackKingPosition = [0, 4];
-    // Restablecer turno a blancas
+    // Restablece el turno a las piezas blancas
     isWhiteTurn = true;
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    // Construye la estructura principal de la pantalla usando un Scaffold
     return Scaffold(
+      // Define el color de fondo de la pantalla
       backgroundColor: backgroundColor,
+      // El cuerpo del Scaffold contiene una columna con varias secciones
       body: Column(
         children: [
-          // Sección superior para mostrar las piezas capturadas de las blancas
+          // ──────────────────────────────────────────────────────────────
+          // Sección superior: Muestra las piezas capturadas del bando blanco
+          // ──────────────────────────────────────────────────────────────
           Expanded(
+            // El widget Expanded hace que esta sección ocupe el espacio que le corresponde
             child: GridView.builder(
+              // Se genera un item por cada pieza capturada del bando blanco
               itemCount: whitePiecesTaken.length,
+              // Deshabilita el desplazamiento para que la grilla se ajuste al tamaño del Expanded
               physics: const NeverScrollableScrollPhysics(),
+              // Define un grid con un número fijo de columnas (8 en este caso)
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
               ),
+              // itemBuilder crea cada widget que representa una pieza capturada
               itemBuilder:
                   (context, index) => DeadPiece(
+                    // Se pasa la ruta de la imagen de la pieza capturada
                     imagePath: whitePiecesTaken[index].imagePath,
+                    // Se especifica que la pieza es blanca
                     isWhite: true,
                   ),
             ),
           ),
 
-          // Mostrar mensaje de "CHECK!" si hay jaque
-          Text(checkStatus ? "CHECK!" : ""),
+          // ──────────────────────────────────────────────────────────────
+          // Indicador de jaque: Muestra el mensaje "CHECK!" si hay jaque en el tablero
+          // ──────────────────────────────────────────────────────────────
+          Text(
+            // Si checkStatus es verdadero, se muestra "CHECK!", de lo contrario se muestra una cadena vacía
+            checkStatus ? "CHECK!" : "",
+            // Se pueden agregar estilos adicionales al texto si se desea
+          ),
 
-          // Sección central: el tablero de ajedrez
+          // ──────────────────────────────────────────────────────────────
+          // Sección central: Representa el tablero de ajedrez
+          // ──────────────────────────────────────────────────────────────
           Expanded(
+            // Se asigna un mayor flex (3) para que esta sección ocupe más espacio en la pantalla
             flex: 3,
             child: GridView.builder(
+              // Se crea una grilla de 8x8 casillas (64 en total)
               itemCount: 8 * 8,
+              // Deshabilita el desplazamiento vertical para que se muestre todo el tablero fijo
               physics: const NeverScrollableScrollPhysics(),
+              // Define la grilla con 8 columnas, lo que garantiza que el tablero se vea como un cuadrado
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
               ),
+              // El itemBuilder se encarga de construir cada casilla del tablero
               itemBuilder: (context, index) {
-                // Calcular la fila y columna a partir del índice
-                int row = index ~/ 8;
-                int col = index % 8;
+                // Se calcula la fila y columna a partir del índice lineal
+                int row = index ~/ 8; // División entera para obtener la fila
+                int col = index % 8; // Módulo para obtener la columna
 
-                // Determinar si la casilla actual es la seleccionada
+                // Determina si la casilla actual está seleccionada por el usuario
                 bool isSelected = selectedRow == row && selectedCol == col;
 
-                // Verificar si la casilla es un movimiento válido
+                // Inicializa la bandera que indica si esta casilla es un movimiento válido
                 bool isValidMove = false;
+                // Se recorre la lista de movimientos válidos para ver si la casilla (row, col) es uno de ellos
                 for (var position in validMoves) {
                   if (position[0] == row && position[1] == col) {
                     isValidMove = true;
+                    break; // Se sale del ciclo al encontrar una coincidencia
                   }
                 }
 
-                // Devolver el widget Square con la información de la casilla
+                // Se devuelve el widget Square que representa una casilla del tablero
                 return Square(
+                  // Determina el color de la casilla (blanca o negra) basado en su índice
                   isWhite: isWhite(index),
+                  // Se pasa la pieza que se encuentra en la posición actual del tablero (puede ser null)
                   piece: board[row][col],
+                  // Indica si la casilla está seleccionada para mostrar una indicación visual
                   isSelected: isSelected,
+                  // Indica si la casilla es un destino válido para mover la pieza seleccionada
                   isValidMove: isValidMove,
+                  // Función que se ejecuta al tocar la casilla: gestiona la selección y movimiento de la pieza
                   onTap: () => pieceSelected(row, col),
                 );
               },
             ),
           ),
 
-          // Sección inferior para mostrar las piezas capturadas de las negras
+          // ──────────────────────────────────────────────────────────────
+          // Sección inferior: Muestra las piezas capturadas del bando negro
+          // ──────────────────────────────────────────────────────────────
           Expanded(
             child: GridView.builder(
+              // Se genera un item por cada pieza capturada del bando negro
               itemCount: blackPiecesTaken.length,
+              // Deshabilita el desplazamiento para que la grilla se ajuste al tamaño del Expanded
               physics: const NeverScrollableScrollPhysics(),
+              // Define la grilla con 8 columnas para una distribución uniforme
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
               ),
+              // itemBuilder crea cada widget que representa una pieza capturada
               itemBuilder:
                   (context, index) => DeadPiece(
+                    // Se pasa la ruta de la imagen de la pieza capturada
                     imagePath: blackPiecesTaken[index].imagePath,
+                    // Se especifica que la pieza es negra
                     isWhite: false,
                   ),
             ),
